@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.claude/
+video/frames/
+video/_build/

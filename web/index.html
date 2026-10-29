@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkyTrace · Flight Trajectory Analytics</title>
+<link rel="stylesheet" href="vendor/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0f1c;--panel:#111a2e;--line:#1e2a45;--txt:#e6edf7;--mut:#8a9bbb;--acc:#4cc9f0;--hot:#ff6b6b;--ok:#06d6a0;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:'Space Grotesk',sans-serif}
+header{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+h1{margin:0;font-size:24px;letter-spacing:.5px}h1 span{color:var(--acc)}
+.sub{color:var(--mut);font-size:13px;margin-top:4px}
+.tag{font-family:'JetBrains Mono';font-size:11px;padding:5px 10px;border:1px solid var(--acc);color:var(--acc);border-radius:20px}
+nav{display:flex;gap:4px;padding:0 28px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{background:none;border:0;color:var(--mut);padding:14px 16px;font:inherit;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav button.on{color:var(--txt);border-color:var(--acc)}
+main{padding:22px 28px;max-width:1500px;margin:auto}.tab{display:none}.tab.on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi b{display:block;font-size:24px;font-family:'JetBrains Mono'}.kpi small{color:var(--mut);font-size:12px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h3{margin:0 0 10px;font-size:15px}.card p{color:var(--mut);font-size:13px;line-height:1.5;margin:4px 0 10px}
+#map{height:560px;border-radius:8px}
+.ctrl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px;color:var(--mut);margin-bottom:10px}
+.ctrl label{display:flex;gap:6px;align-items:center;cursor:pointer}
+input[type=range]{accent-color:var(--acc);width:220px}
+.hr{font-family:'JetBrains Mono';color:var(--acc);min-width:90px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:500}td.num{font-family:'JetBrains Mono';text-align:right}
+.pill{padding:2px 8px;border-radius:10px;font-size:11px}.pill.h{background:#ff6b6b33;color:var(--hot)}
+.bar{height:8px;background:var(--line);border-radius:4px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.step{flex:1;min-width:150px;background:#0d1526;border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}
+.step b{color:var(--acc);font-size:12px;font-family:'JetBrains Mono'}.step h4{margin:6px 0;font-size:14px}.step p{margin:0;font-size:12px}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--mut);flex-wrap:wrap}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+.leaflet-container{background:#0a0f1c}
+@media(max-width:900px){.grid,.g2{grid-template-columns:1fr}header,main,nav{padding-left:16px;padding-right:16px}#map{height:420px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Sky<span>Trace</span> — Flight Trajectory Analytics</h1>
+  <div class="sub">Spatio-temporal big-data analysis of Indian airspace · Hadoop · Spark · MongoDB · Graph analytics</div></div>
+  <div class="tag">SDG 9 · Industry, Innovation &amp; Infrastructure</div>
+</header>
+<nav id="nav">
+  <button data-t="t-map" class="on">Airspace Map</button><button data-t="t-time">Temporal Analysis</button>
+  <button data-t="t-route">Route Efficiency</button><button data-t="t-net">Network &amp; Communities</button>
+  <button data-t="t-arch">Architecture</button>
+</nav>
+<main>
+<div class="kpis" id="kpis"></div>
+
+<section class="tab on" id="t-map">
+ <div class="grid">
+  <div class="card">
+   <div class="ctrl">
+    <label><input type="checkbox" id="lyTraj" checked>Trajectories</label>
+    <label><input type="checkbox" id="lyHeat">Density heatmap</label>
+    <label><input type="checkbox" id="lyAp" checked>Airports</label>
+    <label><input type="checkbox" id="lyHot" checked>Hotspots</label>
+    <label><input type="checkbox" id="lyHold">Holding only</label>
+    <span>Departure hour (IST)</span><input type="range" id="hour" min="-1" max="23" value="-1"><span class="hr" id="hrLbl">All day</span>
+   </div>
+   <div id="map"></div>
+   <div class="legend" style="margin-top:10px"><span><i style="background:#06d6a0"></i>&lt;3 km</span><span><i style="background:#ffd166"></i>3–8 km</span><span><i style="background:#4cc9f0"></i>&gt;8 km cruise</span><span><i style="background:#ff6b6b"></i>Holding pattern</span></div>
+  </div>
+  <div>
+   <div class="card"><h3>Top congestion hotspots</h3><p>0.5° grid cells ranked by ADS-B state-vector density (MapReduce Job 1).</p><table id="hotTbl"></table></div>
+   <div class="card"><h3>Flight phases</h3><canvas id="phaseCh" height="200"></canvas></div>
+  </div>
+ </div>
+</section>
+
+<section class="tab" id="t-time">
+ <div class="card"><h3>Airspace load by hour (IST) and altitude band</h3><p>Two clear peaks — the morning bank (06–10) and evening bank (17–21). Low-altitude load tracks terminal-area congestion.</p><canvas id="hourCh" height="90"></canvas></div>
+ <div class="g2">
+  <div class="card"><h3>Departures per hour</h3><canvas id="depCh" height="160"></canvas></div>
+  <div class="card"><h3>Holding events by destination</h3><p>Detected when cumulative turn ≥ 540° in the approach segment.</p><canvas id="holdCh" height="160"></canvas></div>
+ </div>
+</section>
+
+<section class="tab" id="t-route">
+ <div class="g2">
+  <div class="card"><h3>Least efficient routes</h3><p>Mean extra distance flown vs great-circle (routes with ≥3 flights). Candidates for direct routing / Free Route Airspace.</p><canvas id="routeCh" height="220"></canvas></div>
+  <div class="card"><h3>Infrastructure impact</h3><p>Excess distance converted to CO₂ at 7.6 kg/km (A320-class, 2.4 kg fuel/km × 3.16).</p><div id="impact"></div></div>
+ </div>
+ <div class="card"><h3>Flights with highest inefficiency (MapReduce Job 2 output)</h3><div style="overflow-x:auto"><table id="flTbl"></table></div></div>
+</section>
+
+<section class="tab" id="t-net">
+ <div class="grid">
+  <div class="card"><h3>Airport network — Louvain communities</h3><p>Nodes = airports (size ∝ PageRank), edges = routes (width ∝ flights), colour = community.</p><div id="netMap" style="height:520px;border-radius:8px"></div></div>
+  <div class="card"><h3>Hub ranking</h3><table id="apTbl"></table></div>
+ </div>
+</section>
+
+
+<section class="tab" id="t-arch">
+ <div class="card"><h3>End-to-end pipeline</h3>
+  <div class="flow">
+   <div class="step"><b>01 · INGEST</b><h4>OpenSky ADS-B</h4><p>State vectors: time, icao24, lat, lon, altitude, velocity, heading, vertical rate</p></div>
+   <div class="step"><b>02 · STORE</b><h4>HDFS</h4><p>put / ls / cat / cp / mv / get / rm, block replication</p></div>
+   <div class="step"><b>03 · BATCH</b><h4>MapReduce</h4><p>Job 1: spatio-temporal grid<br>Job 2: trajectory reconstruction</p></div>
+   <div class="step"><b>04 · PROCESS</b><h4>Spark</h4><p>Spark SQL, window functions, phase segmentation, holding detection</p></div>
+   <div class="step"><b>05 · SERVE</b><h4>MongoDB</h4><p>GeoJSON LineStrings + 2dsphere index: $near, $geoIntersects</p></div>
+   <div class="step"><b>06 · GRAPH</b><h4>Network</h4><p>Louvain communities, PageRank, betweenness</p></div>
+   <div class="step"><b>07 · VISUALISE</b><h4>Dashboard</h4><p>Leaflet + Chart.js</p></div>
+  </div>
+ </div>
+ <div class="g2">
+  <div class="card"><h3>Syllabus mapping</h3><table>
+   <tr><th>Experiment</th><th>Where it's used</th></tr>
+   <tr><td>1 · HDFS</td><td>Raw ADS-B storage and file operations</td></tr>
+   <tr><td>2 · NoSQL</td><td>MongoDB trajectory document store with geo index</td></tr>
+   <tr><td>3 · MapReduce</td><td>Grid aggregation and per-flight route metrics</td></tr>
+   <tr><td>6 · Community detection</td><td>Louvain on the airport graph</td></tr>
+   <tr><td>7 · Structure-based model</td><td>PageRank / betweenness hub analysis</td></tr></table></div>
+  <div class="card"><h3>Why this matters for SDG 9</h3><p><b style="color:var(--txt)">Target 9.1</b> asks for reliable, sustainable and resilient infrastructure. Airspace is that infrastructure. This pipeline shows:</p>
+   <p>• <b style="color:var(--txt)">where and when</b> capacity runs out (hotspots, peak banks)<br>• <b style="color:var(--txt)">how much</b> detours and holding cost in fuel and CO₂<br>• <b style="color:var(--txt)">which hubs</b> carry the network, so investment goes where it has the most effect<br>• a <b style="color:var(--txt)">scalable</b> design: the same jobs run on a day of global OpenSky data (~1 GB/day) by adding nodes</p></div>
+ </div>
+</section>
+</main>
+
+<script src="vendor/leaflet.min.js"></script>
+<script src="vendor/leaflet-heat.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="vendor/countries.js"></script>
+<script src="data/dashboard.js"></script>
+<script>
+const D = window.DASHBOARD, $ = s => document.querySelector(s);
+const COMM = ['#4cc9f0', '#f72585', '#ffd166', '#06d6a0', '#b388ff', '#ff9f1c'];
+Chart.defaults.color = '#8a9bbb'; Chart.defaults.borderColor = '#1e2a45'; Chart.defaults.font.family = 'Space Grotesk';
+const fmt = n => n.toLocaleString('en-IN');
+const k = D.kpis;
+$('#kpis').innerHTML = [[fmt(k.state_vectors), 'ADS-B state vectors'], [fmt(k.flights), 'Flights reconstructed'],
+ [k.airports + ' / ' + k.routes, 'Airports / routes'], [k.avg_ineff + '%', 'Avg route inefficiency'],
+ [fmt(k.total_excess_km) + ' km', 'Excess distance flown'], [k.total_co2_t + ' t', 'Avoidable CO₂ / day'],
+ [k.holdings, 'Holding patterns'], [k.communities + ' · Q=' + k.modularity, 'Louvain communities']]
+ .map(([v, l]) => `<div class="kpi"><b>${v}</b><small>${l}</small></div>`).join('');
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button,.tab').forEach(e => e.classList.remove('on'));
+  b.classList.add('on'); $('#' + b.dataset.t).classList.add('on');
+  if (b.dataset.t === 't-net') setTimeout(() => net.invalidateSize(), 50);
+  if (b.dataset.t === 't-map') setTimeout(() => map.invalidateSize(), 50);
+});
+
+// ---------- Map ----------
+const tiles = () => L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution: '© OpenStreetMap © CARTO'});
+// offline country outlines (bundled) so the map has a background even without internet; online tiles draw on top
+const WORLD_GEO = topojson.feature(WORLD, WORLD.objects.countries);
+const base = m => { L.geoJSON(WORLD_GEO, {interactive: false, style: f => ({color: '#2f4470', weight: 1, fillColor: f.id === '356' ? '#16233f' : '#0e1628', fillOpacity: 1})}).addTo(m); tiles().addTo(m); return m; };
+const map = L.map('map', {preferCanvas: true}).setView([22, 81], 5); base(map);
+const altCol = a => a < 3000 ? '#06d6a0' : a < 8000 ? '#ffd166' : '#4cc9f0';
+const trajLayer = L.layerGroup().addTo(map), apLayer = L.layerGroup().addTo(map), hotLayer = L.layerGroup().addTo(map);
+const maxH = Math.max(...D.heat.map(h => h[2]));
+const heatLayer = L.heatLayer(D.heat.map(h => [h[0], h[1], h[2] / maxH]), {radius: 22, blur: 18, max: .6});
+function drawTraj() {
+  trajLayer.clearLayers();
+  const hr = +$('#hour').value, holdOnly = $('#lyHold').checked;
+  $('#hrLbl').textContent = hr < 0 ? 'All day' : String(hr).padStart(2, '0') + ':00–' + String(hr).padStart(2, '0') + ':59';
+  D.trajectories.filter(t => (hr < 0 || t.h === hr) && (!holdOnly || t.hold)).forEach(t => {
+    for (let i = 0; i < t.p.length - 1; i++)
+      L.polyline([t.p[i].slice(0, 2), t.p[i + 1].slice(0, 2)], {color: t.hold ? '#ff6b6b' : altCol(t.p[i][2]), weight: t.hold ? 1.6 : 1, opacity: t.hold ? .9 : .45})
+        .bindTooltip(`${t.cs} · ${t.o}→${t.d}<br>inefficiency ${t.ineff}%${t.hold ? '<br><b>holding</b>' : ''}`).addTo(trajLayer);
+  });
+}
+D.airports.forEach(a => L.circleMarker([a.lat, a.lon], {radius: 4 + a.pagerank * 60, color: '#fff', weight: 1, fillColor: COMM[a.community], fillOpacity: .9})
+  .bindTooltip(`<b>${a.code}</b> ${a.name}<br>movements ${a.movements} · holds ${a.holds}`).addTo(apLayer));
+D.hotspots.forEach((h, i) => L.rectangle([[h.lat - .25, h.lon - .25], [h.lat + .25, h.lon + .25]], {color: '#ff6b6b', weight: 1.5, fillOpacity: .15})
+  .bindTooltip(`Hotspot #${i + 1} near ${h.near}: ${h.n} reports`).addTo(hotLayer));
+const toggle = (id, ly) => $(id).onchange = e => e.target.checked ? ly.addTo(map) : map.removeLayer(ly);
+toggle('#lyTraj', trajLayer); toggle('#lyHeat', heatLayer); toggle('#lyAp', apLayer); toggle('#lyHot', hotLayer);
+$('#hour').oninput = drawTraj; $('#lyHold').onchange = drawTraj; drawTraj();
+$('#hotTbl').innerHTML = '<tr><th>#</th><th>Cell</th><th>Near</th><th style="text-align:right">Reports</th></tr>' +
+  D.hotspots.map((h, i) => `<tr><td>${i + 1}</td><td>${h.lat.toFixed(2)}, ${h.lon.toFixed(2)}</td><td>${h.near}</td><td class="num">${fmt(h.n)}</td></tr>`).join('');
+const ph = D.phase_counts;
+new Chart($('#phaseCh'), {type: 'doughnut', data: {labels: Object.keys(ph), datasets: [{data: Object.values(ph), backgroundColor: ['#4cc9f0', '#06d6a0', '#ffd166', '#8a9bbb'], borderWidth: 0}]}, options: {plugins: {legend: {position: 'right'}}}});
+
+// ---------- Temporal ----------
+const H = [...Array(24).keys()].map(h => String(h).padStart(2, '0'));
+new Chart($('#hourCh'), {type: 'bar', data: {labels: H, datasets: [
+  {label: 'High (>8 km)', data: D.band_hour.HIGH, backgroundColor: '#4cc9f0'},
+  {label: 'Mid (3–8 km)', data: D.band_hour.MID, backgroundColor: '#ffd166'},
+  {label: 'Low (<3 km)', data: D.band_hour.LOW, backgroundColor: '#06d6a0'}]},
+  options: {scales: {x: {stacked: true}, y: {stacked: true, title: {display: true, text: 'state vectors'}}}}});
+const dep = Array(24).fill(0); D.trajectories.forEach(t => dep[t.h]++);
+new Chart($('#depCh'), {type: 'line', data: {labels: H, datasets: [{label: 'departures', data: dep, borderColor: '#4cc9f0', backgroundColor: '#4cc9f033', fill: true, tension: .35}]}, options: {plugins: {legend: {display: false}}}});
+const holdAp = D.airports.filter(a => a.holds).sort((a, b) => b.holds - a.holds);
+new Chart($('#holdCh'), {type: 'bar', data: {labels: holdAp.map(a => a.code), datasets: [{data: holdAp.map(a => a.holds), backgroundColor: '#ff6b6b'}]}, options: {plugins: {legend: {display: false}}}});
+
+// ---------- Routes ----------
+new Chart($('#routeCh'), {type: 'bar', data: {labels: D.worst_routes.map(r => r.o + '→' + r.d), datasets: [{data: D.worst_routes.map(r => r.ineff), backgroundColor: '#ff9f1c'}]},
+  options: {indexAxis: 'y', plugins: {legend: {display: false}}, scales: {x: {title: {display: true, text: '% extra distance'}}}}});
+const yearly = Math.round(k.total_co2_t * 365);
+$('#impact').innerHTML = [['Excess distance today', fmt(k.total_excess_km) + ' km', 100],
+  ['Avoidable CO₂ today', k.total_co2_t + ' t', 100], ['Extrapolated per year', fmt(yearly) + ' t CO₂', 100],
+  ['Flights with ≥5% detour', D.trajectories.filter(t => t.ineff >= 5).length + ' / ' + k.flights, D.trajectories.filter(t => t.ineff >= 5).length / k.flights * 100]]
+  .map(([l, v, p]) => `<div style="margin:14px 0"><div style="display:flex;justify-content:space-between"><span style="color:var(--mut)">${l}</span><b style="font-family:JetBrains Mono">${v}</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`).join('');
+$('#flTbl').innerHTML = '<tr><th>Callsign</th><th>Route</th><th style="text-align:right">Flown km</th><th style="text-align:right">GC km</th><th style="text-align:right">Ineff %</th><th style="text-align:right">CO₂ excess kg</th><th style="text-align:right">Duration</th><th></th></tr>' +
+  D.flights.map(f => `<tr><td>${f.callsign}</td><td>${f.origin} → ${f.destination}</td><td class="num">${fmt(f.flown_km)}</td><td class="num">${fmt(f.gc_km)}</td><td class="num">${f.ineff_pct}</td><td class="num">${fmt(f.co2_excess_kg)}</td><td class="num">${f.duration_min} min</td><td>${f.holding ? '<span class="pill h">holding</span>' : ''}</td></tr>`).join('');
+
+// ---------- Network ----------
+const net = L.map('netMap').setView([22, 81], 5); base(net);
+const AP = Object.fromEntries(D.airports.map(a => [a.code, a]));
+const edges = {}; D.routes.forEach(r => { const key = [r.o, r.d].sort().join('-'); edges[key] = (edges[key] || 0) + r.n; });
+Object.entries(edges).forEach(([key, n]) => { const [a, b] = key.split('-').map(c => AP[c]);
+  L.polyline([[a.lat, a.lon], [b.lat, b.lon]], {color: a.community === b.community ? COMM[a.community] : '#556', weight: Math.min(.5 + n / 4, 6), opacity: .55}).bindTooltip(`${key}: ${n} flights`).addTo(net); });
+D.airports.forEach(a => L.circleMarker([a.lat, a.lon], {radius: 5 + a.pagerank * 80, color: '#fff', weight: 1, fillColor: COMM[a.community], fillOpacity: 1})
+  .bindTooltip(`<b>${a.code}</b> · community ${a.community}<br>PageRank ${a.pagerank} · betweenness ${a.betweenness}`, {permanent: a.pagerank > .06, direction: 'right'}).addTo(net));
+$('#apTbl').innerHTML = '<tr><th>Airport</th><th>Comm.</th><th style="text-align:right">PageRank</th><th style="text-align:right">Betw.</th><th style="text-align:right">Deg</th></tr>' +
+  [...D.airports].sort((a, b) => b.pagerank - a.pagerank).map(a => `<tr><td><b>${a.code}</b> <span style="color:var(--mut)">${a.name}</span></td><td><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${COMM[a.community]}"></i> ${a.community}</td><td class="num">${a.pagerank.toFixed(3)}</td><td class="num">${a.betweenness.toFixed(3)}</td><td class="num">${a.degree}</td></tr>`).join('');
+
+</script>
+</body>
+</html>

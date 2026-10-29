@@ -1,0 +1,104 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SkyTrace scenes</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0f1c;--panel:#111a2e;--line:#1e2a45;--txt:#e6edf7;--mut:#8a9bbb;--acc:#4cc9f0;--hot:#ff6b6b}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'Space Grotesk',sans-serif;overflow:hidden}
+.s{position:absolute;inset:0;padding:70px 90px;display:none;opacity:0;transition:opacity .6s}
+.s.on{display:block}.s.vis{opacity:1}
+.k{font-family:'JetBrains Mono';color:var(--acc);font-size:16px;letter-spacing:2px}
+h1{font-size:52px;margin:10px 0 26px}h1.big{font-size:96px;margin-top:120px}h1 span{color:var(--acc)}
+ul{list-style:none;padding:0;margin:0}li{font-size:27px;margin:0 0 20px;padding-left:34px;position:relative;opacity:0;transform:translateY(10px);transition:all .5s}
+li.in{opacity:1;transform:none}li:before{content:"";position:absolute;left:0;top:13px;width:14px;height:3px;background:var(--acc)}
+.sub{font-size:30px;color:var(--mut)}
+.row{display:flex;gap:18px;flex-wrap:wrap;margin-top:30px}
+.box{flex:1;min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;opacity:0;transform:translateY(12px);transition:all .5s}
+.box.in{opacity:1;transform:none}.box b{font-family:'JetBrains Mono';color:var(--acc);font-size:14px}.box h3{margin:8px 0 6px;font-size:26px}.box p{margin:0;color:var(--mut);font-size:17px}
+pre{background:#050913;border:1px solid var(--line);border-radius:12px;padding:20px;font:15px/1.6 'JetBrains Mono';color:#cfe3ff;white-space:pre-wrap;margin:0}
+.cols{display:grid;grid-template-columns:1fr 1.4fr;gap:22px}.cols h4{margin:0 0 10px;color:var(--mut);font-weight:500}
+.tag{display:inline-block;margin-top:30px;font-family:'JetBrains Mono';border:1px solid var(--acc);color:var(--acc);padding:8px 16px;border-radius:30px}
+.plane{position:absolute;right:90px;top:120px;width:420px;opacity:.9}
+</style></head><body>
+
+<section class="s" id="title">
+ <div class="k">BDSMA MICRO PROJECT · B.E. COMPUTER · SEM VII</div>
+ <h1 class="big">Sky<span>Trace</span></h1>
+ <div class="sub">Flight Trajectory Analysis using Big Data</div>
+ <div class="tag">SDG 9 · Industry, Innovation &amp; Infrastructure</div>
+ <svg class="plane" viewBox="0 0 400 300"><path d="M10 260 C 120 240, 180 120, 390 40" stroke="#4cc9f0" stroke-width="3" fill="none" stroke-dasharray="8 8"/><path d="M10 200 C 150 210, 250 160, 390 150" stroke="#ff6b6b" stroke-width="2" fill="none" stroke-dasharray="6 10"/><circle cx="390" cy="40" r="9" fill="#4cc9f0"/><circle cx="390" cy="150" r="7" fill="#ff6b6b"/><circle cx="10" cy="260" r="7" fill="#06d6a0"/><circle cx="10" cy="200" r="7" fill="#ffd166"/></svg>
+</section>
+
+<section class="s" id="what">
+ <div class="k">WHAT IS THIS PROJECT?</div><h1>Google Maps traffic, but for the sky</h1>
+ <ul><li>Every plane sends its position every second (ADS-B), like a GPS ping</li>
+ <li>Joining these points gives the flight's path, called a trajectory</li>
+ <li>We study WHERE and WHEN the sky is crowded (spatio-temporal analytics)</li>
+ <li>Using big data tools: Hadoop, MapReduce, Spark, MongoDB, graph analysis</li></ul>
+</section>
+
+<section class="s" id="why">
+ <div class="k">WHY DO WE NEED THIS?</div><h1>Crowded skies waste fuel and time</h1>
+ <ul><li>Delhi and Mumbai airports are packed during the morning and evening rush</li>
+ <li>When the runway is full, planes circle in the air and wait, called holding</li>
+ <li>Planes follow bent air routes instead of straight lines</li>
+ <li>15 minutes of circling ≈ 500–600 kg of extra fuel for one A320</li>
+ <li>SDG 9: data tells us where new runways and better routes are needed</li></ul>
+</section>
+
+<section class="s" id="arch">
+ <div class="k">HOW IT WORKS</div><h1>End-to-end big data pipeline</h1>
+ <div class="row">
+  <div class="box"><b>01 · DATA</b><h3>OpenSky</h3><p>Real flight positions: time, plane ID, lat, lon, height, speed</p></div>
+  <div class="box"><b>02 · STORE</b><h3>Hadoop HDFS</h3><p>Big files split into blocks across machines</p></div>
+  <div class="box"><b>03 · PROCESS</b><h3>MapReduce + Spark</h3><p>Count busy areas, rebuild each flight path</p></div>
+ </div>
+ <div class="row">
+  <div class="box"><b>04 · SAVE</b><h3>MongoDB</h3><p>Flight paths as map lines, searchable by location</p></div>
+  <div class="box"><b>05 · ANALYSE</b><h3>Graph</h3><p>Louvain groups + PageRank hub airports</p></div>
+  <div class="box"><b>06 · SHOW</b><h3>Dashboard</h3><p>Interactive map and charts</p></div>
+ </div>
+</section>
+
+<section class="s" id="hadoop">
+ <div class="k">HADOOP · MAPREDUCE · SPARK (GOOGLE COLAB)</div><h1>Processing the data</h1>
+ <div class="cols">
+  <div><h4>HDFS commands used</h4><pre>hdfs dfs -mkdir -p /flights/raw
+hdfs dfs -put flights_states.csv /flights/raw/
+hdfs dfs -ls -h /flights/raw
+hdfs dfs -cat /flights/raw/... | head
+hdfs dfs -cp / -mv / -get / -rm
+hadoop jar hadoop-streaming.jar \
+  -mapper mapper_grid.py \
+  -reducer reducer_sum.py</pre></div>
+  <div><h4>MapReduce output from our run</h4><pre id="term"></pre></div>
+ </div>
+</section>
+
+<section class="s" id="uses">
+ <div class="k">USE CASES &amp; BENEFITS</div><h1>Who can use SkyTrace?</h1>
+ <ul><li><b>Airports Authority of India:</b> plan direct routes and redesign busy airspace</li>
+ <li><b>Airports:</b> know when a new runway or airport is needed (like Navi Mumbai and Noida)</li>
+ <li><b>Airlines:</b> pick better times and routes to save fuel and money</li>
+ <li><b>Government:</b> track aviation pollution for climate goals</li>
+ <li><b>Passengers:</b> fewer delays, more on-time flights</li></ul>
+</section>
+
+<section class="s" id="end">
+ <div class="k">CONCLUSION</div><h1>Raw flight data → better infrastructure</h1>
+ <ul><li>Complete pipeline: HDFS → MapReduce → Spark → MongoDB → Graphs → Dashboard</li>
+ <li>Found crowded areas, wasted distance, holding and hub airports</li>
+ <li>Future: live data with Kafka, delay prediction with ML, weather data</li></ul>
+ <div class="tag">Thank you · github.com/manishraje28/SkyTrace</div>
+</section>
+
+<script>
+window.show = id => {
+  document.querySelectorAll('.s').forEach(s => s.classList.remove('on', 'vis'));
+  const s = document.getElementById(id); s.classList.add('on'); requestAnimationFrame(() => s.classList.add('vis'));
+  const items = s.querySelectorAll('li,.box'); items.forEach(i => i.classList.remove('in'));
+  items.forEach((it, i) => setTimeout(() => it.classList.add('in'), 500 + i * (window.STAGGER || 1400)));
+  if (id === 'hadoop') { const t = document.getElementById('term'); t.textContent = '';
+    const txt = window.TERM || ''; let i = 0; const iv = setInterval(() => { t.textContent = txt.slice(0, i += 6); if (i >= txt.length) clearInterval(iv); }, 30); }
+};
+</script>
+</body></html>

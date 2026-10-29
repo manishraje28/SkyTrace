@@ -1,0 +1,15 @@
+$ hdfs dfs -put flights_states.csv /flights/raw/
+$ hdfs dfs -ls -h /flights/raw
+-rw-r--r--   1 root supergroup   5.7M  /flights/raw/flights_states.csv
+$ hadoop jar hadoop-streaming.jar -mapper mapper_grid.py -reducer reducer_sum.py ...
+# top busy (lat_box, lon_box, hour, height) -> count
+37,146,2,MID	63
+37,146,7,MID	61
+37,146,5,MID	61
+37,146,12,MID	57
+$ hadoop jar hadoop-streaming.jar -mapper mapper_route.py -reducer reducer_route.py ...
+# flight -> from,to,flown_km,straight_km,extra%,minutes,max_height
+8056b8|AIC7713	PNQ,BOM,349.8,123.9,182.40,43,7600
+802491|SEJ1168	PNQ,BOM,346.9,124.2,179.43,43,7600
+807cbb|SEJ8020	PNQ,BOM,346.4,124.4,178.53,43,7600
+807c4c|VTI3737	PNQ,BOM,346.7,124.8,177.70,43,7600
